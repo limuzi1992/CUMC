@@ -1,5 +1,5 @@
 #!/bin/bash
-#$ -cwd -l mem=8G,time=6:: -N AnnVCF
+#$ -cwd -l mem=4G,time=6:: -N AnnVCF
 
 
 #This script takes a bam file or a list of bam files (filename must end ".list") and runs variant calling using the HaplotypeCaller in gVCF mode
@@ -69,7 +69,7 @@ source $EXOMPPLN/exome.lib.sh #library functions begin "func" #library functions
 ArrNum=$SGE_TASK_ID
 funcFilfromList #if the input is a list get the appropriate input file for this job of the array --> $InpFil
 VcfFil=$InpFil #input vcf file
-VcfNam=`basename $VcfFil | sed s/.gz$// | sed s/.vcf$// | sed s/.rawvariants$//` #basename for outputs
+VcfNam=`basename $VcfFil |  sed s/.vcf$// | sed s/.rawvariants$//` #basename for outputs
 if [[ -z $LogFil ]]; then LogFil=$VcfNam.AnnVCF.log; fi # a name for the log file
 TmpLog=$VcfNam.AnnVCF.temp.log #temporary log file
 TmpVar=$VcfNam.tempvar
@@ -94,18 +94,22 @@ funcWriteStartLog
 ##Convert VCF to ANNOVAR input file using ANNOVAR - use a trimmed vcf to all possible alternate alleles using the withfreq flag (using all samples slows this down considerably as annovar calculated the allele frequencies)
 StepName="Convert VCF to ANNOVAR input file using ANNOVAR"
 OneSam=`less $VcfFil | grep -m 1 ^#CHROM | cut -f 10`
+echo $OneSam
+
 StepCmd="vcftools --vcf $VcfFil --indv $OneSam --recode --out TEMP.$VcfFil;
  convert2annovar.pl -includeinfo -allsample -withfreq -format vcf4 TEMP.$VcfFil.recode.vcf -outfile $TmpVar;
  cut -f 1-5,9-13 $TmpVar > $TmpVar.2;
  mv $TmpVar.2 $TmpVar"
 if [[ $FilTyp == "gz" ]]; then StepCmd=`echo $StepCmd | sed s/--vcf/--gzvcf/g`; fi
+echo $StepCmd
+
 funcRunStep
 rm -f TEMP.$VcfFil.recode.vcf
 
 ##Generate Annotation table
 # A note regarding the annotation of multi-allelic variants: If annnovar uses "." as the NA string whilst building the annotation table (i.e. to indicate that there is no annotation for an allele), vcftools' vcf-annotate correctly ignores the annotation and adds nothing to the INFO field. For variants with multiple alternate alleles, we want to add a "." to the vcf INFO field to indicate missing data for those alternates where some alleles have annotation, i.e. e.g  "...;SIFTscr=1.234,.;..." to indicate a SIFT score for the first alternate allele and no annotation for the second. With a "." in the annovar table for the second allele we would just get "...;SIFTscr=1.234;...". Therefore we set the NA string to "%%%". The "%%%" string will be added to vcf by vcf-annotate ("...;SIFTscr=1.234,%%%;...") and then we can use sed to replace it with ".". The only problem then is that we would get "...;SIFTscr=.,.;..." for variants with no annotation at all and we don't want that, so an R script is used first to replace the "%%%" with "." in the annovar annotation table for variants where all alleles lack a particular annotation.
 StepName="Build Annotation table using ANNOVAR"
-StepCmd="table_annovar.pl $TmpVar $ANNHDB --buildver hg19 --remove -protocol refGene,esp6500siv2_all,esp6500siv2_aa,esp6500siv2_ea,1000g2014oct_all,1000g2014oct_eur,1000g2014oct_amr,1000g2014oct_eas,1000g2014oct_afr,1000g2014oct_sas,exac03,ljb26_all,caddgt10,caddindel,cosmic70,genomicSuperDups -operation g,f,f,f,f,f,f,f,f,f,f,f,f,f,f,r -otherinfo  -nastring %%%  --outfile $AnnFil"
+StepCmd="table_annovar.pl $TmpVar /home/local/ARCS/hz2408/resources/humandb --buildver hg19 --remove -protocol refGene,esp6500siv2_all,esp6500siv2_aa,esp6500siv2_ea,1000g2014oct_all,1000g2014oct_eur,1000g2014oct_amr,1000g2014oct_eas,1000g2014oct_afr,1000g2014oct_sas,exac03,ljb26_all,caddgt10,caddindel,cosmic70,genomicSuperDups -operation g,f,f,f,f,f,f,f,f,f,f,f,f,f,f,r -otherinfo  -nastring %%%  --outfile $AnnFil"
 if [[ "$FullCadd" == "true" ]]; then 
     StepCmd=${StepCmd/caddgt10/cadd}
     echo "  Using full CADD database..." >> $TmpLog
@@ -124,7 +128,7 @@ colnames(dat) <- c(hed[-length(hed)], \"CHROM\", \"POS\", \"ID\", \"REF\", \"ALT
 # in each column replace %%% with . where there is no annotation for that locus
 ind <- paste(dat[,\"CHROM\"], dat[,\"POS\"]) #locus for each line
 for(i in 8:(ncol(dat)-5)) {
-  has.annot <- unique(ind[grep(\"^\\\\.$%%%\", dat[,i], invert=T)]) #loci with some annotation in the column
+  has.annot <- unique(ind[grep(\"%%%\", dat[,i], invert=T)]) #loci with some annotation in the column
   no.annot <- which(!ind%in%has.annot) #all lines pertaining to loci with no annotation in the column
   if(length(no.annot)>0) { dat[no.annot,i] <- \".\" }
   if(length(has.annot)>0) { dat[ind%in%has.annot,i] <- gsub(\"^\\\\.\$\", \"%%%\", dat[ind%in%has.annot,i]) }
@@ -250,10 +254,9 @@ VcfFil=$VcfFil.gz
 
 #Call next steps of pipeline if requested
 NextJob="Recalibrate Variant Quality"
-NextCmd="$EXOMPPLN/ExmVC.4.RecalibrateVariantQuality.sh -i $VcfFil -r $RefFil -l $LogFil -P"
-if [[ "$BadET" == "true" ]]; then NextCmd=$NextCmd" -B"; fi 
-if [[ "$NoRecal" == "true" ]]; then NextCmd=$NextCmd" -X"; fi
-NextCmd=$NextCmd" >stdostde/AnnotateVCF.$VcfNam.o 2>stdostde/AnnotateVCF.$VcfNam.e"
+QsubCmd="qsub -o stdostde/ -e stdostde/ $EXOMPPLN/ExmVC.4.RecalibrateVariantQuality.sh -i $VcfFil -r $RefFil -l $LogFil -P"
+if [[ "$BadET" == "true" ]]; then QsubCmd=$QsubCmd" -B"; fi 
+if [[ "$NoRecal" == "true" ]]; then QsubCmd=$QsubCmd" -X"; fi
 funcPipeLine
 
 #End Log
