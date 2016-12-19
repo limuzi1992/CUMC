@@ -1,7 +1,8 @@
 #!/bin/bash
+#$ -cwd  -l mem=2G,time=24:: -N HCgVCF
 
-#This script takes a bam file and runs variant calling using the HaplotypeCaller in gVCF mode
-#    InpFil - (required) - Path to Bam file to be aligned. 
+#This script takes a bam file or a list of bam files (filename must end ".list") and runs variant calling using the HaplotypeCaller in gVCF mode
+#    InpFil - (required) - Path to Bam file to be aligned. Alternatively a file with a list of bams can be provided and the script run as an array job. List file name must end ".list"
 #    RefFil - (required) - shell file containing variables with locations of reference files, jar files, and resource directories; see list below for required variables
 #    TgtBed - (optional) - Exome capture kit targets bed file (must end .bed for GATK compatability) ; may be specified using a code corresponding to a variable in the RefFil giving the path to the target file- only required if calling pipeline
 #    LogFil - (optional) - File for logging progress
@@ -29,9 +30,9 @@
 
 #set default arguments
 usage="
-ExmAln.2.HaplotypeCaller_GVCFmode.sh -i <InputFile> -r <reference_file> -t <targetfile> -l <logfile> -FBH
+(-t <X>-<Y> [if providing a list]) ExmVC.1.HaplotypeCaller_GVCFmode.sh -i <InputFile> -r <reference_file> -t <targetfile> -l <logfile> -FBH
 
-     -i (required) - Path to Bam file for variant calling
+     -i (required) - Path to Bam file for variant calling or \".list\" file containing a multiple paths
      -r (required) - shell file containing variables with locations of reference files and resource directories
      -t (required) - Exome capture kit targets or other genomic intervals bed file (must end .bed for GATK compatability)
      -l (optional) - Log file
@@ -67,6 +68,8 @@ source $EXOMPPLN/exome.lib.sh #library functions begin "func" #library functions
 
 #Set local Variables
 funcGetTargetFile #If the target file has been specified using a code, get the full path from the exported variable
+ArrNum=$SGE_TASK_ID
+funcFilfromList #if the input is a list get the appropriate input file for this job of the array --> $InpFil
 BamFil=`readlink -f $InpFil` #resolve absolute path to bam
 BamNam=`basename $BamFil | sed s/.bam//`
 BamNam=${BamNam/.bam/} # a name for the output files
@@ -83,7 +86,7 @@ funcWriteStartLog
 
 ##Run genomic VCF generation
 StepName="gVCF generation with GATK HaplotypeCaller"
-StepCmd="java -Xmx7G -Djava.io.tmpdir=$TmpDir -jar $GATKJAR
+StepCmd="java -Xmx7G -Djava.io.tmpdir=$TmpDir -jar /home/local/ARCS/hz2408/bin/GenomeAnalysisTK.jar
  -T HaplotypeCaller
  -R $REF
  -L $TgtBed

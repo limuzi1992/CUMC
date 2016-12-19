@@ -108,7 +108,7 @@ rm -f TEMP.$VcfFil.recode.vcf
 
 ##Run Annovar to Annotate VCF file
 StepName="Build Annotation table using ANNOVAR"
-StepCmd="table_annovar.pl $VcfFil $ANNHDB --buildver hg19 --remove -protocol refGene,esp6500siv2_all,esp6500siv2_aa,esp6500siv2_ea,1000g2015aug_all,1000g2015aug_eur,1000g2015aug_amr,1000g2015aug_eas,1000g2015aug_afr,1000g2015aug_sas,exac03,dbnsfp30a,cadd13gt10,cosmic70,genomicSuperDups,clinvar_20160302,mcap,avsnp147,dbscsnv11,eigen,fathmm,gwava,hrcr1,icgc21,kaviar_20150923 -operation g,f,f,f,f,f,f,f,f,f,f,f,f,f,r,f,f,f,f,f,f,f,f,f,f -otherinfo  -nastring .  -vcfinput --thread 16"
+StepCmd="table_annovar.pl $VcfFil $ANNHDB --buildver hg38 --remove -protocol refGene,esp6500siv2_all,esp6500siv2_aa,esp6500siv2_ea,1000g2015aug_all,1000g2015aug_eur,1000g2015aug_amr,1000g2015aug_eas,1000g2015aug_afr,1000g2015aug_sas,exac03,dbnsfp30a,cosmic70,genomicSuperDups,clinvar_20160302,mcap,avsnp147,dbscsnv11,hrcr1,kaviar_20150923 -operation g,f,f,f,f,f,f,f,f,f,f,f,f,r,f,f,f,f,f,f -otherinfo  -nastring .  -vcfinput"
 if [[ "$FullCadd" == "true" ]]; then 
     StepCmd=${StepCmd/cadd13gt10/cadd13}
     echo "  Using full CADD database..." >> $TmpLog
@@ -116,16 +116,10 @@ fi
 funcRunStep
 #mv $VcfFil.hg19_multianno.vcf $basename.hg19_multianno.vcf
 VcfFilOut=$VcfFil.hg19_multianno.vcf
-
-sed -i -e 's/\\x3d/:/g' $VcfFilOut
-sed -i -e 's/\\x3b/-/g' $VcfFilOut
-bgzip $VcfFilOut
-tabix -f -p vcf $VcfFilOut.gz
-
 #
 StepName="Chenge invalid char"
-StepCmd="sed -i -e 's/\x3d/:/g' $VcfFilOut;
-	     sed -i -e 's/\x3b/-/g' $VcfFilOut;
+StepCmd="sed -i -e 's/\\x3d/:/g' $VcfFilOut;
+	     sed -i -e 's/\\x3b/-/g' $VcfFilOut;
 		 bgzip $VcfFilOut;
 		 tabix -f -p vcf $VcfFilOut.gz;"
 
