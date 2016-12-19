@@ -1,5 +1,10 @@
 #!/bin/bash
-#$ -cwd -l mem=8G,time=4:: -N DepOfCov
+#$ -S /bin/bash
+#$ -j y
+#$ -N DepOfCov
+#$ -l h_rt=12:00:00
+#$ -l h_vmem=16G
+#$ -cwd
 
 #This script takes a bam file and generates depth of coverage statistics using GATK
 #    InpFil - (required) - Path to Bam file to be aligned.
@@ -84,7 +89,7 @@ funcWriteStartLog
 
 #Calculate depth of coverage statistics
 StepName="Calculate depth of coverage statistics using GATK DepthOfCoverage" # Description of this step - used in log
-StepCmd="java -Xmx5G -Djava.io.tmpdir=$TmpDir -jar $GATKJAR
+StepCmd="java -Xmx10G -Djava.io.tmpdir=$TmpDir -jar $GATKJAR
  -T DepthOfCoverage
  -R $REF
  -I $BamFil

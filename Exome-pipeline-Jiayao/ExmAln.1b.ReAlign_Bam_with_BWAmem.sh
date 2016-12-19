@@ -1,5 +1,10 @@
 #!/bin/bash
-#$ -cwd -pe smp 6 -l mem=2G,time=12:: -N BamBWABam
+#$ -S /bin/bash
+#$ -j y
+#$ -N BamBWABam 
+#$ -l h_rt=12:00:00
+#$ -l h_vmem=16G
+#$ -cwd
 
 # This script takes a bam file and reverts it to sam format and then realigns with BWA mem
 # The process is:
