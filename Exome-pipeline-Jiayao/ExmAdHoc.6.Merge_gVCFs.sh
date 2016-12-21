@@ -1,4 +1,10 @@
 #!/bin/bash
+#$ -S /bin/bash
+#$ -j y
+#$ -N MergeGVCF
+#$ -l h_rt=12:00:00
+#$ -l h_vmem=16G
+#$ -cwd
 
 #This script takes a list of gVCF files (filename must end ".list") and combines them into a single file
 #    InpFil - (required) - A list of gVCFs to be combined. List file name must end ".list"
