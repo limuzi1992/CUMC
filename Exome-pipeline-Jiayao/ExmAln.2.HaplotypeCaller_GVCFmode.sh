@@ -1,5 +1,10 @@
 #!/bin/bash
-#$ -cwd  -l mem=2G,time=24:: -N HCgVCF
+#$ -S /bin/bash
+#$ -j y
+#$ -N HaplotypeCall 
+#$ -l h_rt=12:00:00
+#$ -l h_vmem=16G
+#$ -cwd
 
 #This script takes a bam file or a list of bam files (filename must end ".list") and runs variant calling using the HaplotypeCaller in gVCF mode
 #    InpFil - (required) - Path to Bam file to be aligned. Alternatively a file with a list of bams can be provided and the script run as an array job. List file name must end ".list"
@@ -86,7 +91,7 @@ funcWriteStartLog
 
 ##Run genomic VCF generation
 StepName="gVCF generation with GATK HaplotypeCaller"
-StepCmd="java -Xmx7G -Djava.io.tmpdir=$TmpDir -jar /home/local/ARCS/hz2408/bin/GenomeAnalysisTK.jar
+StepCmd="java -Xmx7G -Djava.io.tmpdir=$TmpDir -jar $GATKJAR 
  -T HaplotypeCaller
  -R $REF
  -L $TgtBed
